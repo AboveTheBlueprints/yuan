@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>园</title>
+<style>
+  body { background:#1e221d; color:#d8dccf; font-family:"PingFang SC","Noto Sans SC",sans-serif; margin:0; }
+  main { max-width: 60em; margin: 0 auto; padding: 1.6em 1em 4em; }
+  h1 { font-weight: normal; font-size: 20px; margin: 0 0 .3em; color:#eef0e6; }
+  .intro { color:#9ca394; font-size: 14px; line-height: 1.85; margin-bottom: 1em; max-width: 46em; }
+  #wrap { display:flex; gap: 1.4em; flex-wrap: wrap; align-items:flex-start; }
+  #grid { display:inline-grid; grid-template-columns: repeat(19, 28px); grid-auto-rows: 28px; gap:1px; background:#2b3029; padding:1px; user-select:none; }
+  .c { position:relative; display:flex; align-items:center; justify-content:center; font-size:12px; background:#cfc9b4; color:#3a3a30; }
+  .w { background:#3d4637; }
+  .bush { background:#5f7a4e; color:#dfe8cf; }
+  .alt { background:#8d8a80; color:#efece2; }
+  .cyp { background:#4c5e3e; color:#e8efd8; font-size:13px; }
+  .shade { background:#a9ae9e; color:#3c4036; }
+  .gate { background:#b9a27a; color:#3f3320; }
+  .me::after { content:""; position:absolute; inset:5px; border-radius:50%; background:#3c5f86; box-shadow:0 0 0 2px #fff4; }
+  .c.mom::after { content:""; position:absolute; left:9px; right:9px; top:3px; bottom:3px; border-radius:40% 40% 20% 20%; background:#9a4a2a; }
+  .me.beside::after { box-shadow:0 0 0 2px #fff4, 6px 0 0 1px #9a4a2a; }
+  .mine::before { content:""; position:absolute; width:7px; height:7px; border-radius:50%; background:#3c5f86; opacity:.75; }
+  .hers::before { content:""; position:absolute; width:9px; height:9px; border-radius:50%; border:2px solid #b0552f; }
+  .both::before { content:""; position:absolute; width:9px; height:9px; border-radius:50%; background:#3c5f86; border:2px solid #b0552f; }
+  #side { flex:1; min-width: 17em; }
+  #stat { font-size:15px; color:#eef0e6; margin-bottom:.6em; line-height:1.7; }
+  #log { font-size:14px; line-height:1.8; color:#c6cbbd; max-height: 24em; overflow-y:auto; }
+  #log .her { color:#e8c49a; }
+  #log .end { color:#fff; margin-top:.8em; }
+  #keys { margin-top: .9em; display:grid; grid-template-columns: repeat(3, 3.4em); gap:.3em; }
+  #keys2 { margin-top:.5em; display:flex; gap:.4em; flex-wrap:wrap; }
+  button { font-family:inherit; font-size:14px; background:#2c3229; color:#d8dccf; border:1px solid #4a5345; padding:.35em .7em; cursor:pointer; border-radius:3px; }
+  button:hover { background:#384035; }
+  #keys button { padding:.35em 0; }
+  .legend { margin-top:1.2em; font-size:13px; color:#8a9283; line-height:1.9; }
+  #again { margin-top:1em; display:none; }
+</style>
+</head>
+<body>
+<main>
+<h1>园</h1>
+<div class="intro">你坐在轮椅上。每天从园门进来，找个地方待着，天黑前从园门回家。一天三十下。<br>
+方向键走一格；“等”是坐一下；“坐”是一直坐着，有动静或者天黑才停；“喊”是喊一声；在园门口按“回”就回家。</div>
+<div id="wrap">
+  <div>
+    <div id="grid"></div>
+    <div class="legend">蓝的圆点是你。深绿的是树和墙，浅的是路。灰的是祭坛（上不去），绿的一小片是矮树丛，柏是一棵老柏树，浅灰那一段是墙根的荫凉，门是园门。</div>
+  </div>
+  <div id="side">
+    <div id="stat"></div>
+    <div id="keys">
+      <span></span><button data-k="上">↑</button><span></span>
+      <button data-k="左">←</button><button data-k="等">等</button><button data-k="右">→</button>
+      <span></span><button data-k="下">↓</button><span></span>
+    </div>
+    <div id="keys2"><button data-k="坐">坐</button><button data-k="喊">喊</button><button data-k="回">回</button></div>
+    <div id="log"></div>
+    <button id="again">从头再来十天</button>
+  </div>
+</div>
+</main>
+<script src="园.js"></script>
+<script>
+const Y = window.Yuan;
+let acts = [];
+const grid = document.getElementById('grid'), log = document.getElementById('log'), stat = document.getElementById('stat');
+const CLS = { '#': 'w', '&': 'bush', 'O': 'alt', 'T': 'cyp', '|': 'shade', 'G': 'gate' };
+const TXT = { 'T': '柏', 'G': '门' };
+function cell(ch, extra) {
+  const d = document.createElement('div'); d.className = 'c ' + (CLS[ch] || '') + (extra ? ' ' + extra : '');
+  if (TXT[ch]) d.textContent = TXT[ch]; return d;
+}
+function render() {
+  const r = Y.run(acts);
+  grid.innerHTML = '';
+  if (!r.done) {
+    for (let y = 0; y < Y.H; y++) for (let x = 0; x < Y.W; x++) {
+      const isMe = r.me[0] === x && r.me[1] === y, isHer = r.mom && r.mom[0] === x && r.mom[1] === y && !isMe;
+      grid.appendChild(cell(Y.MAP[y][x], isMe ? ('me' + (r.beside ? ' beside' : '')) : isHer ? 'mom' : ''));
+    }
+    stat.textContent = `第 ${r.day} 天，还有 ${r.left} 下天就黑了。你在${r.where}。`;
+    let start = r.out.lastIndexOf(`==== 第 ${r.day} 天 ====`);
+    const lines = r.out.slice(start + 1);
+    const prevDay = start > 0 ? r.out.slice(0, start).reverse().find(l => l.startsWith('天黑了') || l.includes('回家了')) : null;
+    log.innerHTML = '';
+    lines.slice().reverse().forEach(l => { const p = document.createElement('div'); p.textContent = l; if (l.includes('她')) p.className = 'her'; log.appendChild(p); });
+    if (!lines.length && r.day > 1) { const p = document.createElement('div'); p.textContent = '新的一天。'; log.appendChild(p); }
+    document.getElementById('again').style.display = 'none';
+    document.getElementById('keys').style.display = ''; document.getElementById('keys2').style.display = '';
+  } else {
+    for (let y = 0; y < Y.H; y++) for (let x = 0; x < Y.W; x++) {
+      const ch = Y.MAP[y][x], dr = r.draw[y][x];
+      const ex = dr === '%' ? 'both' : dr === 'm' ? 'hers' : dr === ',' ? 'mine' : '';
+      grid.appendChild(cell(ch, ex));
+    }
+    stat.textContent = '很多年以后。';
+    log.innerHTML = '';
+    const ps = ['你翻出那几年在园子里的样子。蓝点是你的车辙，红圈是她的脚印。',
+      `这十天里她来过 ${r.came} 回。你看见过她 ${r.isaw} 回，喊过她 ${r.called} 回。`,
+      `有 ${r.unseen} 回她来了，你不知道。有 ${r.lost} 回她没找着你，一个人回去了。`];
+    ps.forEach((t, i) => { const p = document.createElement('div'); p.textContent = t; if (i) p.className = 'end'; log.appendChild(p); });
+    document.getElementById('again').style.display = 'block';
+    document.getElementById('keys').style.display = 'none'; document.getElementById('keys2').style.display = 'none';
+  }
+}
+function press(k) { const r = Y.run(acts); if (r.done) return; acts.push(k); render(); }
+document.querySelectorAll('button[data-k]').forEach(b => b.addEventListener('click', () => press(b.dataset.k)));
+document.getElementById('again').addEventListener('click', () => { acts = []; render(); });
+addEventListener('keydown', e => {
+  const m = { ArrowUp: '上', ArrowDown: '下', ArrowLeft: '左', ArrowRight: '右', w: '上', s: '下', a: '左', d: '右', ' ': '等', Enter: '坐' }[e.key];
+  if (m) { e.preventDefault(); press(m); }
+});
+render();
+</script>
+</body>
+</html>
